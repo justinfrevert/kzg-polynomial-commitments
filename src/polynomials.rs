@@ -23,19 +23,14 @@ impl Polynomial {
 
 #[test]
 fn basic_evaluation() {
-    env_logger::init();
-
     let poly = Polynomial::new(&[1, 2, 3]);
 
     let point = BigUint::from(5_u32);
-    // $5^2 + (5 * 2) + 3 = 38$
-    assert_eq!(poly.evaluate(&point), BigUint::from(38_u32));
+    assert_eq!(poly.evaluate(&point), BigUint::from(86_u32));
 }
 
 #[test]
 fn evaluation_with_leading_coefficient() {
-    env_logger::init();
-
     let poly = Polynomial::new(&[2, 4, 3]);
     let point = BigUint::from(6_u32);
     assert_eq!(poly.evaluate(&point), BigUint::from(134_u32));

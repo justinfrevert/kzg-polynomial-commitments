@@ -71,7 +71,6 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
                 let coefficient = coefficient_modded.try_into().unwrap();
 
                 let coefficient_as_field_element = FieldElement::new(coefficient, self.g1.clone());
-                // let field_result = coefficient_as_field_element * gp_as_field_element;
                 result += coefficient_as_field_element * global_parameter.clone();
             },
         );
@@ -83,3 +82,6 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
     fn create_witness() {}
     fn verify_evaluation() {}
 }
+
+#[test]
+fn commits() {}
