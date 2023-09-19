@@ -84,4 +84,20 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
 }
 
 #[test]
-fn commits() {}
+fn commits() {
+    let polynomial = Polynomial::new(&vec![1, 2, 3]);
+
+    let field = Field(BigUint::from(41_u32));
+    let polynomial_committer = GenericPolynomialCommitment::new(field.clone());
+
+    let t = FieldElement::new(BigUint::from(20_u32), field.clone());
+
+    let max_degree = 25;
+    let generator = FieldElement::new(BigUint::from(1_u32), field.clone());
+
+    let global_parameters = polynomial_committer.setup(t, max_degree, generator);
+
+    let commitment = polynomial_committer.commit(polynomial, &global_parameters);
+
+    assert_eq!(commitment, FieldElement::new(BigUint::from(5_u32), field));
+}
