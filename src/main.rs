@@ -21,7 +21,7 @@ fn main() {
     // TODO: try replacing with reference to field
     let generator = FieldElement::new(BigUint::from(1_u32), g1);
 
-    let gp = polynomial_commitment.setup(t, max_degree, generator);
+    let gp = polynomial_commitment.setup(t, max_degree);
 
     println!("Global parameters are {:?}", gp);
 
@@ -29,6 +29,6 @@ fn main() {
 
     let polynomial = Polynomial::new(my_data);
 
-    let commitment = polynomial_commitment.commit(polynomial, &gp);
-    println!("commitment is {:?}", commitment);
+    // let commitment = polynomial_commitment.commit(polynomial, &gp);
+    // println!("commitment is {:?}", commitment);
 }

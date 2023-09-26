@@ -15,7 +15,7 @@ impl Polynomial {
     pub fn evaluate(&self, point: &BigUint) -> BigUint {
         let mut total = BigUint::from(0_u32);
         for (i, coefficient) in self.0.iter().enumerate() {
-            total += (point.pow(i as u32) * coefficient)
+            total += point.pow(i as u32) * coefficient
         }
         total
     }
