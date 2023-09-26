@@ -10,7 +10,7 @@ rand = "0.8.5"
 num-bigint = { version = "0.4.4", features = ["rand"]}
 log = "0.4.20"
 env_logger = "0.10.0"
-blstrs = "0.7.1"
+blstrs = { version = "0.7.1", git = "https://github.com/justinFrevert/blstrs.git" }
 bls12_381 = { version = "0.8.0", features = ["groups"]}
 num-traits = "0.2.16"
 group = "0.13.0"

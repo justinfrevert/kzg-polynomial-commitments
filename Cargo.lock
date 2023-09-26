@@ -63,13 +63,13 @@ dependencies = [
 [[package]]
 name = "blstrs"
 version = "0.7.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7a8a8ed6fefbeef4a8c7b460e4110e12c5e22a5b7cf32621aae6ad650c4dcf29"
+source = "git+https://github.com/justinFrevert/blstrs.git#3b5c4a4e00218c3ff40b4246370462adbe791202"
 dependencies = [
  "blst",
  "byte-slice-cast",
  "ff",
  "group",
+ "num-traits",
  "pairing",
  "rand_core",
  "serde",

@@ -5,18 +5,28 @@ use crate::{
 use num_bigint::BigUint;
 
 use blstrs::{G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
+// use bls12_381::{G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
 use group::{Group, ff::Field as FieldT};
+
+pub struct GlobalParameters {
+    pub gs: Vec<G1Projective>,
+    hs: Vec<G2Projective>
+}
+
+impl GlobalParameters {
+    fn new(gs: Vec<G1Projective>, hs: Vec<G2Projective>) -> Self {
+        GlobalParameters { gs, hs }
+    }
+}
 
 pub trait PolynomialCommitment {
     fn setup(
         &self,
-        // tau is a secret value, ideally computed trustlessly, and must be forgotten
-        tau: FieldElement,
         // This is something like "max degree"
         d: usize,
-    ) -> (Vec<G1Projective>, Vec<G2Projective>);
+    ) -> GlobalParameters;
     /// Should be $f(\tau) \cdot G \in \mathbb G$
-    fn commit(&self, polynomial: Polynomial, global_parameters: &[FieldElement]) -> FieldElement;
+    fn commit(&self, polynomial: Polynomial, global_parameters: &GlobalParameters) -> G1Projective;
     fn open();
     fn verify();
     fn create_witness();
@@ -37,11 +47,9 @@ impl GenericPolynomialCommitment {
 impl PolynomialCommitment for GenericPolynomialCommitment {
     fn setup(
         &self,
-        tau: FieldElement,
-        // g1: Field,
         // This is something like "max degree"
         d: usize,
-    ) -> (Vec<G1Projective>, Vec<G2Projective>) {
+    ) -> GlobalParameters {
         let mut gs = vec![G1Projective::generator(); d];
         let mut hs = vec![G2Projective::generator(); d];
 
@@ -57,26 +65,12 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
         let new_gs = gs.iter().map(|g| g * tau).collect();
         let new_hs = hs.iter().map(|h| h * tau).collect();
 
-        (new_gs, new_hs)
+        GlobalParameters::new(new_gs, new_hs)
     }
 
-    fn commit(&self, polynomial: Polynomial, global_parameters: &[FieldElement]) -> FieldElement {
-        let mut result = FieldElement::new(BigUint::from(0_u32), self.g1.clone());
-
-        // For $f_0 .. f_d$ we need to calculate $f_i \times H_i$ where H is the global parameters
-        // polynomial.0.iter().zip(global_parameters.iter()).for_each(
-        polynomial.0.iter().zip(global_parameters.iter()).for_each(
-            |(coefficient, global_parameter)| {
-                // Constrained to smaller size through modding
-                let coefficient_modded = coefficient % self.g1.clone().0;
-                let coefficient = coefficient_modded.try_into().unwrap();
-
-                let coefficient_as_field_element = FieldElement::new(coefficient, self.g1.clone());
-                result += coefficient_as_field_element * global_parameter.clone();
-            },
-        );
-
-        result
+    fn commit(&self, polynomial: Polynomial, global_parameters: &GlobalParameters) -> G1Projective {
+        // For $f_0 .. f_d$ we need to calculate $f_i \times H_i$ where H is the global parameters. We can just use this to do it in an optimized way
+        G1Projective::multi_exp(&global_parameters.gs, &polynomial.0)
     }
     fn open() {}
     fn verify() {}
@@ -92,17 +86,15 @@ fn setup() {
 
 #[test]
 fn commits() {
-    let polynomial = Polynomial::new(&vec![1, 2, 3]);
+    let polynomial = Polynomial::new_from_bytes(&[1, 2, 3]);
 
     let field = Field(BigUint::from(41_u32));
     let polynomial_committer = GenericPolynomialCommitment::new(field.clone());
 
-    let t = FieldElement::new(BigUint::from(20_u32), field.clone());
-
     let max_degree = 25;
     let generator = FieldElement::new(BigUint::from(1_u32), field.clone());
 
-    let global_parameters = polynomial_committer.setup(t, max_degree);
+    let global_parameters = polynomial_committer.setup(max_degree);
 
     // let commitment = polynomial_committer.commit(polynomial, &global_parameters);
 
