@@ -25,7 +25,6 @@ fn main() {
 
     let my_data = "Justin".as_bytes();
 
-
     let polynomial = Polynomial::new_from_bytes(my_data);
 
     // let commitment = polynomial_commitment.commit(polynomial, &gp);

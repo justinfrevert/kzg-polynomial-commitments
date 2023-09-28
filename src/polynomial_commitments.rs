@@ -8,11 +8,11 @@ use num_bigint::BigUint;
 
 use blstrs::{G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
 // use bls12_381::{G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
-use group::{Group, ff::Field as FieldT, prime::PrimeCurveAffine};
+use group::{ff::Field as FieldT, prime::PrimeCurveAffine, Group};
 
 pub struct GlobalParameters {
     pub gs: Vec<G1Projective>,
-    hs: Vec<G2Projective>
+    hs: Vec<G2Projective>,
 }
 
 impl GlobalParameters {
@@ -23,7 +23,7 @@ impl GlobalParameters {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
-    IncorrectDegree
+    IncorrectDegree,
 }
 
 pub trait PolynomialCommitment {
@@ -33,7 +33,11 @@ pub trait PolynomialCommitment {
         d: usize,
     ) -> GlobalParameters;
     /// Should be $f(\tau) \cdot G \in \mathbb G$
-    fn commit(&self, polynomial: &Polynomial, global_parameters: &GlobalParameters) -> Result<G1Projective, Error>;
+    fn commit(
+        &self,
+        polynomial: &Polynomial,
+        global_parameters: &GlobalParameters,
+    ) -> Result<G1Projective, Error>;
     fn open();
     fn verify();
     fn create_witness();
@@ -75,12 +79,19 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
         GlobalParameters::new(new_gs, new_hs)
     }
 
-    fn commit(&self, polynomial: &Polynomial, global_parameters: &GlobalParameters) -> Result<G1Projective, Error> {
+    fn commit(
+        &self,
+        polynomial: &Polynomial,
+        global_parameters: &GlobalParameters,
+    ) -> Result<G1Projective, Error> {
         if polynomial.0.len() != global_parameters.gs.len() {
-            return Err(Error::IncorrectDegree)
+            return Err(Error::IncorrectDegree);
         }
         // For $f_0 .. f_d$ we need to calculate $f_i \times H_i$ where H is the global parameters. We can just use this to do it in an optimized way
-       Ok(G1Projective::multi_exp(&global_parameters.gs, &polynomial.0))
+        Ok(G1Projective::multi_exp(
+            &global_parameters.gs,
+            &polynomial.0,
+        ))
     }
     fn open() {}
     fn verify() {}
@@ -141,19 +152,22 @@ fn adjust() {
     let max_degree = 25;
     let global_parameters = polynomial_committer.setup(max_degree);
 
-
     let too_small_polynomial_then_adjusted = small_polynomial.adjust_to_degree(max_degree);
     let too_large_polynomial_then_adjusted = large_polynomial.adjust_to_degree(max_degree);
 
-    println!("too large polynomial adjusted was {:?}", too_large_polynomial_then_adjusted.0.len());
+    println!(
+        "too large polynomial adjusted was {:?}",
+        too_large_polynomial_then_adjusted.0.len()
+    );
 
-    let too_small_commitment = polynomial_committer.commit(too_small_polynomial_then_adjusted, &global_parameters);
-    let too_large_commitment = polynomial_committer.commit(too_large_polynomial_then_adjusted, &global_parameters);
+    let too_small_commitment =
+        polynomial_committer.commit(too_small_polynomial_then_adjusted, &global_parameters);
+    let too_large_commitment =
+        polynomial_committer.commit(too_large_polynomial_then_adjusted, &global_parameters);
 
     assert!(too_small_commitment.is_ok());
     assert!(too_large_commitment.is_ok());
 }
-
 
 #[test]
 fn adjusts_polynomial_of_different_size_to_correct_degree() {
@@ -170,9 +184,13 @@ fn adjusts_polynomial_of_different_size_to_correct_degree() {
     // Get degree of polynomial commitment, and pad accordingly
     let polynomial_padded = polynomial.adjust_to_degree(max_degree);
 
-    println!("polynomial newly padded is {:?} versus expected degree of {:?}", polynomial_padded.0.len(), max_degree);
+    println!(
+        "polynomial newly padded is {:?} versus expected degree of {:?}",
+        polynomial_padded.0.len(),
+        max_degree
+    );
 
     let commitment = polynomial_committer.commit(&polynomial, &global_parameters);
-    
+
     assert!(commitment.is_ok());
 }

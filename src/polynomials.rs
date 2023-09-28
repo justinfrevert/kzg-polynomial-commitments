@@ -7,16 +7,15 @@ pub struct Polynomial(pub Vec<Scalar>);
 
 impl Polynomial {
     fn new(scalars: &[Scalar]) -> Self {
-        Polynomial(
-            scalars.to_vec()
-        )
+        Polynomial(scalars.to_vec())
     }
 
     pub fn new_from_bytes(bytes: &[u8]) -> Self {
-        let scalars: Vec<Scalar> = bytes.into_iter().map(|d| Scalar::from(d.clone() as u64)).collect();
-        Polynomial(
-            scalars.to_vec()
-        )
+        let scalars: Vec<Scalar> = bytes
+            .into_iter()
+            .map(|d| Scalar::from(d.clone() as u64))
+            .collect();
+        Polynomial(scalars.to_vec())
     }
 
     fn evaluate(&self, point: Scalar) -> Scalar {
@@ -39,11 +38,14 @@ impl Polynomial {
                 unfilled.push(rng.next_u64())
             }
 
-            let new_randoms:Vec<Scalar> = unfilled.into_iter().map(|i| Scalar::from(i as u64)).collect();
+            let new_randoms: Vec<Scalar> = unfilled
+                .into_iter()
+                .map(|i| Scalar::from(i as u64))
+                .collect();
             self.0.extend(new_randoms.iter());
             self
-
-        } else if self.0.len() > d { // Polynomial degree is too big; truncate it
+        } else if self.0.len() > d {
+            // Polynomial degree is too big; truncate it
             // TODO: it should probably be more representative over the full polynomial than just keep the first `d`
             self.0.truncate(d);
             self
