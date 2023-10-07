@@ -1,15 +1,14 @@
-use std::marker::PhantomData;
 
 use crate::{
-    field::{Field, FieldElement},
+    field::Field,
     polynomials::Polynomial,
 };
 use num_bigint::BigUint;
 
-use blstrs::{G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
-// use bls12_381::{G1Affine, G1Projective, G2Affine, G2Projective, Scalar};
-use group::{ff::Field as FieldT, prime::PrimeCurveAffine, Group};
+use blstrs::{ G1Projective, G2Projective, Scalar};
+use group::{ff::Field as FieldT, Group};
 
+#[derive(Clone)]
 pub struct GlobalParameters {
     pub gs: Vec<G1Projective>,
     hs: Vec<G2Projective>,
@@ -23,12 +22,15 @@ impl GlobalParameters {
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum Error {
+    // Tried to use a polynomial of an inappropriate degree
     IncorrectDegree,
+    // Setup not complete; tried to use commitment scheme prior to setup
+    SetupIncomplete
 }
 
 pub trait PolynomialCommitment {
     fn setup(
-        &self,
+        &mut self,
         // This is something like "max degree"
         d: usize,
     ) -> GlobalParameters;
@@ -36,28 +38,27 @@ pub trait PolynomialCommitment {
     fn commit(
         &self,
         polynomial: &Polynomial,
-        global_parameters: &GlobalParameters,
     ) -> Result<G1Projective, Error>;
     fn open();
     fn verify();
-    fn create_witness();
+    fn create_witness(&self, polynomial: Polynomial, point: Scalar) -> (G1Projective, Scalar);
     fn verify_evaluation();
 }
 
 pub struct GenericPolynomialCommitment {
-    // Its g_1 field
-    g1: Field,
+    global_parameters: Option<GlobalParameters>
 }
 
 impl GenericPolynomialCommitment {
-    pub fn new(g1: Field) -> Self {
-        GenericPolynomialCommitment { g1 }
+    // This might seem useless for now. I am keeping it, as I might want to come back later for more initialization values
+    pub fn new() -> Self {
+        GenericPolynomialCommitment { global_parameters: None }
     }
 }
 
 impl PolynomialCommitment for GenericPolynomialCommitment {
     fn setup(
-        &self,
+        &mut self,
         // This is something like "max degree"
         d: usize,
     ) -> GlobalParameters {
@@ -76,14 +77,20 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
         let new_gs = gs.iter().map(|g| g * tau).collect();
         let new_hs = hs.iter().map(|h| h * tau).collect();
 
-        GlobalParameters::new(new_gs, new_hs)
+        let global_parameters = GlobalParameters::new(new_gs, new_hs);
+        self.global_parameters = Some(global_parameters.clone());
+        global_parameters
     }
 
     fn commit(
         &self,
         polynomial: &Polynomial,
-        global_parameters: &GlobalParameters,
     ) -> Result<G1Projective, Error> {
+        if self.global_parameters.is_none() {
+            return Err(Error::SetupIncomplete);
+        }
+
+        let global_parameters = &self.global_parameters.as_ref().unwrap();
         if polynomial.0.len() != global_parameters.gs.len() {
             return Err(Error::IncorrectDegree);
         }
@@ -95,33 +102,31 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
     }
     fn open() {}
     fn verify() {}
-    fn create_witness() {}
+    // Create the witness and evaluation used for later verifying the evaluation
+    // φ(x)−φ(i) / (x−i) 
+    fn create_witness(&self, polynomial: Polynomial, point: Scalar) -> (G1Projective, Scalar) {
+        // The evaulation: φ(i)
+        let phi_i = polynomial.evaluate(point);
+        // Dividend φ(x)−φ(i). We retain the highest degree coefficients(φ(x)) and get −φ(i) by subtracting it by the lowest degree coefficient
+        let mut dividend = polynomial.clone();
+        dividend.0[0] -= &phi_i;
+        // x - i
+        let divisor = Polynomial::new(&[-point, Scalar::ONE]);
+        let mut witness_polynomial = dividend / divisor;
+
+        witness_polynomial.adjust_to_degree(self.global_parameters.as_ref().unwrap().gs.len());
+        // The witness desired is a commitment to the witness polynomial
+        let witness = self.commit(&witness_polynomial).unwrap();
+        (witness, phi_i)
+    }
+
     fn verify_evaluation() {}
 }
 
 #[test]
 fn setup() {
-    let field = Field(BigUint::from(41_u32));
-    let polynomial_committer = GenericPolynomialCommitment::new(field);
-
+    let mut polynomial_committer = GenericPolynomialCommitment::new();
     let gp = polynomial_committer.setup(5);
-}
-
-#[test]
-fn commits() {
-    let polynomial = Polynomial::new_from_bytes(&[1; 25]);
-
-    let field = Field(BigUint::from(41_u32));
-    let polynomial_committer = GenericPolynomialCommitment::new(field.clone());
-
-    let max_degree = 25;
-    let generator = FieldElement::new(BigUint::from(1_u32), field.clone());
-
-    let global_parameters = polynomial_committer.setup(max_degree);
-
-    let commitment = polynomial_committer.commit(&polynomial, &global_parameters);
-
-    // assert_eq!(commitment, G1Projective::generator());
 }
 
 #[test]
@@ -129,25 +134,24 @@ fn errs_on_incorrect_polynomial_degree() {
     let small_polynomial = Polynomial::new_from_bytes(&[1, 2, 3]);
     let large_polynomial = Polynomial::new_from_bytes(&[1; 420]);
 
-    let field = Field(BigUint::from(41_u32));
-    let polynomial_committer = GenericPolynomialCommitment::new(field.clone());
+    let mut polynomial_committer = GenericPolynomialCommitment::new();
 
     let max_degree = 25;
     let global_parameters = polynomial_committer.setup(max_degree);
 
-    let too_small_commitment = polynomial_committer.commit(&small_polynomial, &global_parameters);
-    let too_large_commitment = polynomial_committer.commit(&large_polynomial, &global_parameters);
+    let too_small_commitment = polynomial_committer.commit(&small_polynomial);
+    let too_large_commitment = polynomial_committer.commit(&large_polynomial);
     assert_eq!(too_small_commitment, Err(Error::IncorrectDegree));
     assert_eq!(too_large_commitment, Err(Error::IncorrectDegree));
 }
 
 #[test]
-fn adjust() {
+fn adjusts_polynomial_of_different_size_to_correct_degree() {
     let mut small_polynomial = Polynomial::new_from_bytes(&[1, 2, 3]);
     let mut large_polynomial = Polynomial::new_from_bytes(&[1; 420]);
 
     let field = Field(BigUint::from(41_u32));
-    let polynomial_committer = GenericPolynomialCommitment::new(field.clone());
+    let mut polynomial_committer = GenericPolynomialCommitment::new();
 
     let max_degree = 25;
     let global_parameters = polynomial_committer.setup(max_degree);
@@ -155,42 +159,42 @@ fn adjust() {
     let too_small_polynomial_then_adjusted = small_polynomial.adjust_to_degree(max_degree);
     let too_large_polynomial_then_adjusted = large_polynomial.adjust_to_degree(max_degree);
 
-    println!(
-        "too large polynomial adjusted was {:?}",
-        too_large_polynomial_then_adjusted.0.len()
-    );
-
     let too_small_commitment =
-        polynomial_committer.commit(too_small_polynomial_then_adjusted, &global_parameters);
+        polynomial_committer.commit(too_small_polynomial_then_adjusted);
     let too_large_commitment =
-        polynomial_committer.commit(too_large_polynomial_then_adjusted, &global_parameters);
+        polynomial_committer.commit(too_large_polynomial_then_adjusted);
 
     assert!(too_small_commitment.is_ok());
     assert!(too_large_commitment.is_ok());
 }
 
 #[test]
-fn adjusts_polynomial_of_different_size_to_correct_degree() {
+fn polynomial_commitment() {
+    use crate::*;
+
     let mut polynomial = Polynomial::new_from_bytes(&[1, 2, 3]);
 
-    let field = Field(BigUint::from(41_u32));
-    let polynomial_committer = GenericPolynomialCommitment::new(field.clone());
+    let mut polynomial_committer = GenericPolynomialCommitment::new();
 
     let max_degree = 25;
-    let generator = FieldElement::new(BigUint::from(1_u32), field.clone());
 
-    let global_parameters = polynomial_committer.setup(max_degree);
+    polynomial_committer.setup(max_degree);
 
     // Get degree of polynomial commitment, and pad accordingly
-    let polynomial_padded = polynomial.adjust_to_degree(max_degree);
+    polynomial.adjust_to_degree(max_degree);
 
-    println!(
-        "polynomial newly padded is {:?} versus expected degree of {:?}",
-        polynomial_padded.0.len(),
-        max_degree
-    );
-
-    let commitment = polynomial_committer.commit(&polynomial, &global_parameters);
+    let commitment = polynomial_committer.commit(&polynomial);
 
     assert!(commitment.is_ok());
+}
+
+#[test]
+fn creates_witness_polynomial() {
+    let mut polynomial_committer = GenericPolynomialCommitment::new();
+    polynomial_committer.setup(3);
+
+    let polynomial = Polynomial::new_from_bytes(&[1, 2, 3]);
+    let point = Scalar::from(5);
+
+    let (witness, evaluation) = polynomial_committer.create_witness(polynomial, point);
 }

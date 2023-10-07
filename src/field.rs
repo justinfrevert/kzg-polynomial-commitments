@@ -111,7 +111,7 @@ impl Div for FieldElement {
 
 #[test]
 fn adds() {
-    let field = Field(BigUint::from((101_u32)));
+    let field = Field(BigUint::from(101_u32));
 
     let field_element_lower = FieldElement {
         value: BigUint::from(100_u32),
@@ -131,7 +131,7 @@ fn adds() {
 
 #[test]
 fn subtracts() {
-    let field = Field(BigUint::from((101_u32)));
+    let field = Field(BigUint::from(101_u32));
 
     let field_element_lower = FieldElement {
         value: BigUint::from(3_u32),
