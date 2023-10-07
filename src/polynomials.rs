@@ -2,8 +2,8 @@ use blstrs::Scalar;
 use num_traits::pow;
 use rand::RngCore;
 
-use group::ff::Field;
 use core::ops::Div;
+use group::ff::Field;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Polynomial(pub Vec<Scalar>);
@@ -91,9 +91,8 @@ impl Div for Polynomial {
             Polynomial::new(&[Scalar::from(0)])
         } else {
             // Now we know that self.degree() >= divisor.degree();
-            let mut quotient = Polynomial::new(
-                &vec![Scalar::ZERO; self.0.len() - divisor.0.len() + 1]
-            );
+            let mut quotient =
+                Polynomial::new(&vec![Scalar::ZERO; self.0.len() - divisor.0.len() + 1]);
             let mut remainder: Polynomial = self.clone().into();
             // Can unwrap here because we know self is not zero.
             let divisor_leading_inv = divisor.leading_coefficient().unwrap().invert().unwrap();
@@ -111,10 +110,8 @@ impl Div for Polynomial {
             }
             quotient
         }
-        
-    }   
+    }
 }
-
 
 #[test]
 fn basic_evaluation() {
@@ -133,7 +130,7 @@ fn evaluation_with_leading_coefficient() {
 
 #[test]
 fn divides_polynomials() {
-     //  2x^2+5x+3
+    //  2x^2+5x+3
     let dividend = Polynomial::new(&vec![Scalar::from(2), Scalar::from(5), Scalar::from(3)]);
     // x + 1
     let divisor = Polynomial::new(&vec![Scalar::from(1), Scalar::from(1)]);
@@ -141,5 +138,3 @@ fn divides_polynomials() {
     let ans: Polynomial = Polynomial::new(&[Scalar::from(2), Scalar::from(3)]);
     assert_eq!(dividend / divisor, ans)
 }
-
-

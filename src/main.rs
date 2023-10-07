@@ -8,7 +8,6 @@ use polynomial_commitments::{GenericPolynomialCommitment, PolynomialCommitment};
 use crate::{field::FieldElement, polynomials::Polynomial};
 
 fn main() {
-
     let max_degree = 20;
 
     let mut polynomial_commitment = GenericPolynomialCommitment::new();

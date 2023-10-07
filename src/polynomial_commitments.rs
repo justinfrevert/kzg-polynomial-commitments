@@ -1,11 +1,7 @@
-
-use crate::{
-    field::Field,
-    polynomials::Polynomial,
-};
+use crate::{field::Field, polynomials::Polynomial};
 use num_bigint::BigUint;
 
-use blstrs::{ G1Projective, G2Projective, Scalar};
+use blstrs::{G1Projective, G2Projective, Scalar};
 use group::{ff::Field as FieldT, Group};
 
 #[derive(Clone)]
@@ -25,7 +21,7 @@ pub enum Error {
     // Tried to use a polynomial of an inappropriate degree
     IncorrectDegree,
     // Setup not complete; tried to use commitment scheme prior to setup
-    SetupIncomplete
+    SetupIncomplete,
 }
 
 pub trait PolynomialCommitment {
@@ -35,10 +31,7 @@ pub trait PolynomialCommitment {
         d: usize,
     ) -> GlobalParameters;
     /// Should be $f(\tau) \cdot G \in \mathbb G$
-    fn commit(
-        &self,
-        polynomial: &Polynomial,
-    ) -> Result<G1Projective, Error>;
+    fn commit(&self, polynomial: &Polynomial) -> Result<G1Projective, Error>;
     fn open();
     fn verify();
     fn create_witness(&self, polynomial: Polynomial, point: Scalar) -> (G1Projective, Scalar);
@@ -46,13 +39,15 @@ pub trait PolynomialCommitment {
 }
 
 pub struct GenericPolynomialCommitment {
-    global_parameters: Option<GlobalParameters>
+    global_parameters: Option<GlobalParameters>,
 }
 
 impl GenericPolynomialCommitment {
     // This might seem useless for now. I am keeping it, as I might want to come back later for more initialization values
     pub fn new() -> Self {
-        GenericPolynomialCommitment { global_parameters: None }
+        GenericPolynomialCommitment {
+            global_parameters: None,
+        }
     }
 }
 
@@ -82,10 +77,7 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
         global_parameters
     }
 
-    fn commit(
-        &self,
-        polynomial: &Polynomial,
-    ) -> Result<G1Projective, Error> {
+    fn commit(&self, polynomial: &Polynomial) -> Result<G1Projective, Error> {
         if self.global_parameters.is_none() {
             return Err(Error::SetupIncomplete);
         }
@@ -103,7 +95,7 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
     fn open() {}
     fn verify() {}
     // Create the witness and evaluation used for later verifying the evaluation
-    // φ(x)−φ(i) / (x−i) 
+    // φ(x)−φ(i) / (x−i)
     fn create_witness(&self, polynomial: Polynomial, point: Scalar) -> (G1Projective, Scalar) {
         // The evaulation: φ(i)
         let phi_i = polynomial.evaluate(point);
@@ -137,7 +129,7 @@ fn errs_on_incorrect_polynomial_degree() {
     let mut polynomial_committer = GenericPolynomialCommitment::new();
 
     let max_degree = 25;
-    let global_parameters = polynomial_committer.setup(max_degree);
+    polynomial_committer.setup(max_degree);
 
     let too_small_commitment = polynomial_committer.commit(&small_polynomial);
     let too_large_commitment = polynomial_committer.commit(&large_polynomial);
@@ -159,10 +151,8 @@ fn adjusts_polynomial_of_different_size_to_correct_degree() {
     let too_small_polynomial_then_adjusted = small_polynomial.adjust_to_degree(max_degree);
     let too_large_polynomial_then_adjusted = large_polynomial.adjust_to_degree(max_degree);
 
-    let too_small_commitment =
-        polynomial_committer.commit(too_small_polynomial_then_adjusted);
-    let too_large_commitment =
-        polynomial_committer.commit(too_large_polynomial_then_adjusted);
+    let too_small_commitment = polynomial_committer.commit(too_small_polynomial_then_adjusted);
+    let too_large_commitment = polynomial_committer.commit(too_large_polynomial_then_adjusted);
 
     assert!(too_small_commitment.is_ok());
     assert!(too_large_commitment.is_ok());
