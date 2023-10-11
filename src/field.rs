@@ -20,17 +20,6 @@ impl Field {
             field: self.clone(),
         }
     }
-
-    // fn find_optimal_root_of_unity(&self) -> Option<u64> {
-    //     // Iterate backwards to find the greatest matching field element first, we are interested in the greatest one
-    //     for i in (0..self.0 - 1).rev() {
-    //         // We are looking for the greatest number which the p of the multiplicative group can divide
-    //         if (self.0 - 1) % i == 0 {
-    //             return Some(i);
-    //         }
-    //     }
-    //     return None;
-    // }
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]

@@ -1,7 +1,10 @@
 use crate::{field::Field, polynomials::Polynomial};
+use group::Curve;
 use num_bigint::BigUint;
 
-use blstrs::{G1Projective, G2Projective, Scalar};
+use blstrs::{G1Affine, G1Projective, G2Projective, Scalar, pairing, G2Affine};
+// use bls12_381::{G1Affine, G1Projective, G2Projective, Scalar, pairing, G2Affine};
+use group::prime::PrimeCurveAffine;
 use group::{ff::Field as FieldT, Group};
 
 #[derive(Clone)]
@@ -35,7 +38,7 @@ pub trait PolynomialCommitment {
     fn open();
     fn verify();
     fn create_witness(&self, polynomial: Polynomial, point: Scalar) -> (G1Projective, Scalar);
-    fn verify_evaluation();
+    fn verify_evaluation(&self, committed_polynomial: G1Projective, point: Scalar, evaluation: Scalar, witness: G1Projective) -> bool;
 }
 
 pub struct GenericPolynomialCommitment {
@@ -52,6 +55,7 @@ impl GenericPolynomialCommitment {
 }
 
 impl PolynomialCommitment for GenericPolynomialCommitment {
+    // A trusted setup procedure which can generate global parameters for the application 
     fn setup(
         &mut self,
         // This is something like "max degree"
@@ -59,13 +63,6 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
     ) -> GlobalParameters {
         let gs = vec![G1Projective::generator(); d];
         let hs = vec![G2Projective::generator(); d];
-
-        // Modulus of the base field used in the bls12_381 scheme
-        // From https://github.com/zkcrypto/bls12_381/blob/7de7b9d9c509b9973b35a3241b74bbbea95e700a/src/fp.rs#L70
-        let p = {
-            let large_integer_str = "4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787";
-            BigUint::parse_bytes(large_integer_str.as_bytes(), 10).unwrap()
-        };
 
         let tau = Scalar::random(rand::thread_rng());
 
@@ -77,6 +74,7 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
         global_parameters
     }
 
+    // Generate the commitment to the polynomial
     fn commit(&self, polynomial: &Polynomial) -> Result<G1Projective, Error> {
         if self.global_parameters.is_none() {
             return Err(Error::SetupIncomplete);
@@ -112,7 +110,7 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
         (witness, phi_i)
     }
 
-    fn verify_evaluation() {}
+
 }
 
 #[test]
@@ -163,9 +161,7 @@ fn polynomial_commitment() {
     use crate::*;
 
     let mut polynomial = Polynomial::new_from_bytes(&[1, 2, 3]);
-
     let mut polynomial_committer = GenericPolynomialCommitment::new();
-
     let max_degree = 25;
 
     polynomial_committer.setup(max_degree);
@@ -186,5 +182,10 @@ fn creates_witness_polynomial() {
     let polynomial = Polynomial::new_from_bytes(&[1, 2, 3]);
     let point = Scalar::from(5);
 
+    let commitment = polynomial_committer.commit(&polynomial);
     let (witness, evaluation) = polynomial_committer.create_witness(polynomial, point);
+
+    let result = polynomial_committer.verify_evaluation(commitment.unwrap(), point, evaluation, witness);
+    println!("Verification Result: {}", result);
+    assert!(result);
 }

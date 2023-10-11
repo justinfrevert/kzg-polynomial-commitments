@@ -1,9 +1,7 @@
 # Polynomial Commitments
 
-Learning through implementation!
+Learning through implementation! Inspired by use cases of committing to arbitrary data. This includes only parts of the DL construction, and not the construction making use of Pedersen commitments.
 
-Some notes:
-- Inspired by use cases of committing to arbitrary data
 
 References:
 https://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf
@@ -14,3 +12,4 @@ https://github.com/arkworks-rs/poly-commit/tree/master/src/kzg10
 https://github.com/availproject/avail-core/tree/main/kate
 https://github.com/adria0/a0kzg
 https://github.com/proxima-one/kzg
+https://scroll.io/blog/kzg#the-kzg-polynomial-commitment-scheme
