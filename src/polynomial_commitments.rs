@@ -3,11 +3,10 @@ use group::Curve;
 use num_bigint::BigUint;
 
 use blstrs::{G1Affine, G1Projective, G2Projective, Scalar, pairing, G2Affine};
-// use bls12_381::{G1Affine, G1Projective, G2Projective, Scalar, pairing, G2Affine};
 use group::prime::PrimeCurveAffine;
 use group::{ff::Field as FieldT, Group};
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct GlobalParameters {
     pub gs: Vec<G1Projective>,
     hs: Vec<G2Projective>,
@@ -41,6 +40,7 @@ pub trait PolynomialCommitment {
     fn verify_evaluation(&self, committed_polynomial: G1Projective, point: Scalar, evaluation: Scalar, witness: G1Projective) -> bool;
 }
 
+#[derive(Debug)]
 pub struct GenericPolynomialCommitment {
     global_parameters: Option<GlobalParameters>,
 }
@@ -95,21 +95,46 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
     // Create the witness and evaluation used for later verifying the evaluation
     // φ(x)−φ(i) / (x−i)
     fn create_witness(&self, polynomial: Polynomial, point: Scalar) -> (G1Projective, Scalar) {
-        // The evaulation: φ(i)
-        let phi_i = polynomial.evaluate(point);
+        // The evaulation: φ(i). TODO: Does it need to be mod p?
+        let evaluation = polynomial.evaluate(point);
+
         // Dividend φ(x)−φ(i). We retain the highest degree coefficients(φ(x)) and get −φ(i) by subtracting it by the lowest degree coefficient
         let mut dividend = polynomial.clone();
-        dividend.0[0] -= &phi_i;
-        // x - i
+        dividend.0[0] -= &evaluation;
         let divisor = Polynomial::new(&[-point, Scalar::ONE]);
+
         let mut witness_polynomial = dividend / divisor;
 
         witness_polynomial.adjust_to_degree(self.global_parameters.as_ref().unwrap().gs.len());
+
         // The witness desired is a commitment to the witness polynomial
         let witness = self.commit(&witness_polynomial).unwrap();
-        (witness, phi_i)
+
+        (witness, evaluation)
     }
 
+    // Determine if the hidden polynomial evaluated at the point did produce the evaluation based on the witness
+    // a(poly) b(point) c(evaluation)
+    // $e(\frac {C}{g^{\phi(i)}}, {g}) = e(w_i, \frac{g^\alpha}{g^i})$
+    fn verify_evaluation(
+        &self,
+        committed_polynomial: G1Projective,
+        point: Scalar,
+        evaluation: Scalar,
+        witness: G1Projective,
+    ) -> bool {
+        let g1 = G1Projective::generator();
+        let g2 = G2Projective::generator();
+
+        let inner = committed_polynomial - g1 * evaluation;
+
+        let lhs = pairing(&inner.to_affine(), &g2.to_affine());
+
+        let inner = g2 - &g2 * point;
+        let rhs = pairing(&witness.to_affine(), &inner.to_affine());
+
+        lhs == rhs
+    }
 
 }
 
@@ -176,6 +201,8 @@ fn polynomial_commitment() {
 
 #[test]
 fn creates_witness_polynomial() {
+    env_logger::init();
+
     let mut polynomial_committer = GenericPolynomialCommitment::new();
     polynomial_committer.setup(3);
 
@@ -183,6 +210,7 @@ fn creates_witness_polynomial() {
     let point = Scalar::from(5);
 
     let commitment = polynomial_committer.commit(&polynomial);
+
     let (witness, evaluation) = polynomial_committer.create_witness(polynomial, point);
 
     let result = polynomial_committer.verify_evaluation(commitment.unwrap(), point, evaluation, witness);

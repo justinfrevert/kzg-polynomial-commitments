@@ -16,7 +16,6 @@ fn main() {
     // TODO: try replacing with reference to field
 
     let gp = polynomial_commitment.setup(max_degree);
-
     let my_data = "Justin".as_bytes();
 
     Polynomial::new_from_bytes(my_data);

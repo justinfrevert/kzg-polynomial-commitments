@@ -31,3 +31,6 @@ VerifyEval is correct because
 $e(w_i, g^\alpha/g^i)e(g, g)\phi(i) = e(g^{\psi_i(\alpha)}, g^{(\alpha−i)})e(g, g)^{\phi(i)}$
 $= e(g, g)^{\psi_i(\alpha)(\alpha−i)+\phi(i)}$
 $= e(g, g)^{\phi(\alpha)} = e(C, g)$ as $\phi(x) = \psi_i(x)(x − i) + \phi(i)$
+
+Alternative verify eval definition:
+$e(\frac {C}{g^{\phi(i)}}, {g}) = e(w_i, \frac{g^\alpha}{g^i})$
