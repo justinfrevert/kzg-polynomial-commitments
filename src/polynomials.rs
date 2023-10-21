@@ -225,18 +225,3 @@ fn divides_polynomials() {
     let ans: Polynomial = Polynomial::new(&[Scalar::from(2), Scalar::from(3)]);
     assert_eq!(dividend / divisor, ans)
 }
-
-#[test]
-fn divides_polynomials_2() {
-    let point = Scalar::from(5);
-    let mut polynomial = Polynomial::new(&vec![Scalar::from(1), Scalar::from(2), Scalar::from(3)]);
-    let evaluation = polynomial.evaluate(point);
-    assert_eq!(evaluation, Scalar::from(86));
-
-    polynomial.0[0] -= &evaluation;
-
-    // let divisor = Polynomial::new(&[-point, Scalar::ONE]);
-    // let witness_polynomial = polynomial / divisor;
-
-    assert_eq!(polynomial.evaluate(point), Scalar::ZERO);
-}

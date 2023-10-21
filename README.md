@@ -1,6 +1,6 @@
-# Polynomial Commitments
+# KZG Polynomial Commitments
 
-Learning through implementation! Inspired by use cases of committing to arbitrary data. This includes only parts of the DL construction, and not the construction making use of Pedersen commitments.
+Learning through implementation! Inspired by use cases of committing to arbitrary data. This includes only parts of the DL construction, and not the construction making use of Pedersen commitments. If you're unfamiliar, check out this [post](https://dankradfeist.de/ethereum/2020/06/16/kate-polynomial-commitments.html).
 
 References:
 https://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf

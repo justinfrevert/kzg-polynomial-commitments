@@ -123,7 +123,6 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
     }
 
     // Determine if the hidden polynomial evaluated at the point did produce the evaluation based on the witness
-    // a(poly) b(point) c(evaluation)
     // $e(\frac {C}{g^{\phi(i)}}, {g}) = e(w_i, \frac{g^\alpha}{g^i})$
     fn verify_evaluation(
         &self,
@@ -141,7 +140,7 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
 
         let point_commitment_inverted = g2 * -point;
 
-        let right_side = self.global_parameters.as_ref().unwrap().hs[0] + point_commitment_inverted;
+        let right_side = self.global_parameters.as_ref().unwrap().hs[1] + point_commitment_inverted;
         let rhs = pairing(&witness.to_affine(), &right_side.to_affine());
         lhs == rhs
     }
