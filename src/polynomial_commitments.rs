@@ -34,8 +34,6 @@ pub trait PolynomialCommitment {
     ) -> GlobalParameters;
     /// Should be $f(\tau) \cdot G \in \mathbb G$
     fn commit(&self, polynomial: &Polynomial) -> Result<G1Projective, Error>;
-    fn open();
-    fn verify();
     fn create_witness(&self, polynomial: Polynomial, point: Scalar) -> (G1Projective, Scalar);
     fn verify_evaluation(&self, committed_polynomial: G1Projective, point: Scalar, evaluation: Scalar, witness: G1Projective) -> bool;
 }
@@ -64,10 +62,23 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
         let gs = vec![G1Projective::generator(); d];
         let hs = vec![G2Projective::generator(); d];
 
-        let tau = Scalar::random(rand::thread_rng());
+        // let mut rng = rand::thread_rng();
+        // let tau: u64 = rng.gen();
+        // let tau: BigUint = tau.into();
+        let tau: BigUint = 1_u64.into();
 
-        let new_gs = gs.iter().map(|g| g * tau).collect();
-        let new_hs = hs.iter().map(|h| h * tau).collect();
+        let new_gs = gs.iter().enumerate().map(|(i, g)| {
+            let power = tau.pow(i as u32);
+            let scalar = Scalar::from(power.to_u64_digits()[0]);
+            g * scalar
+        }).collect();
+
+        let new_hs = hs.iter().enumerate().map(|(i, h)| {
+            let power = tau.pow(i as u32);
+            let scalar = Scalar::from(power.to_u64_digits()[0]);
+            h * scalar
+        }).collect();
+
 
         let global_parameters = GlobalParameters::new(new_gs, new_hs);
         self.global_parameters = Some(global_parameters.clone());
@@ -90,25 +101,23 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
             &polynomial.0,
         ))
     }
-    fn open() {}
-    fn verify() {}
+
     // Create the witness and evaluation used for later verifying the evaluation
     // φ(x)−φ(i) / (x−i)
     fn create_witness(&self, polynomial: Polynomial, point: Scalar) -> (G1Projective, Scalar) {
         // The evaulation: φ(i). TODO: Does it need to be mod p?
         let evaluation = polynomial.evaluate(point);
-
         // Dividend φ(x)−φ(i). We retain the highest degree coefficients(φ(x)) and get −φ(i) by subtracting it by the lowest degree coefficient
-        let mut dividend = polynomial.clone();
-        dividend.0[0] -= &evaluation;
+        let mut witness_polynomial = polynomial.clone();
+        witness_polynomial.0[0] -= &evaluation;
         let divisor = Polynomial::new(&[-point, Scalar::ONE]);
-
-        let mut witness_polynomial = dividend / divisor;
-
-        witness_polynomial.adjust_to_degree(self.global_parameters.as_ref().unwrap().gs.len());
-
-        // The witness desired is a commitment to the witness polynomial
-        let witness = self.commit(&witness_polynomial).unwrap();
+        witness_polynomial = witness_polynomial / divisor;
+        
+        // A small commit to this new polynomial where we care less about the length
+        let witness = G1Projective::multi_exp(
+            &self.global_parameters.as_ref().unwrap().gs[..witness_polynomial.0.len()],
+            &witness_polynomial.0
+        );
 
         (witness, evaluation)
     }
@@ -125,14 +134,15 @@ impl PolynomialCommitment for GenericPolynomialCommitment {
     ) -> bool {
         let g1 = G1Projective::generator();
         let g2 = G2Projective::generator();
+        let evaluation_inverse = g1 * -evaluation;
 
-        let inner = committed_polynomial - g1 * evaluation;
+        let left_pairing = committed_polynomial + evaluation_inverse;
+        let lhs = pairing(&left_pairing.to_affine(), &g2.to_affine());
 
-        let lhs = pairing(&inner.to_affine(), &g2.to_affine());
+        let point_commitment_inverted = g2 * -point;
 
-        let inner = g2 - &g2 * point;
-        let rhs = pairing(&witness.to_affine(), &inner.to_affine());
-
+        let right_side = self.global_parameters.as_ref().unwrap().hs[0] + point_commitment_inverted;
+        let rhs = pairing(&witness.to_affine(), &right_side.to_affine());
         lhs == rhs
     }
 
@@ -165,11 +175,9 @@ fn adjusts_polynomial_of_different_size_to_correct_degree() {
     let mut small_polynomial = Polynomial::new_from_bytes(&[1, 2, 3]);
     let mut large_polynomial = Polynomial::new_from_bytes(&[1; 420]);
 
-    let field = Field(BigUint::from(41_u32));
-    let mut polynomial_committer = GenericPolynomialCommitment::new();
+    let polynomial_committer = GenericPolynomialCommitment::new();
 
     let max_degree = 25;
-    let global_parameters = polynomial_committer.setup(max_degree);
 
     let too_small_polynomial_then_adjusted = small_polynomial.adjust_to_degree(max_degree);
     let too_large_polynomial_then_adjusted = large_polynomial.adjust_to_degree(max_degree);
@@ -201,8 +209,6 @@ fn polynomial_commitment() {
 
 #[test]
 fn creates_witness_polynomial() {
-    env_logger::init();
-
     let mut polynomial_committer = GenericPolynomialCommitment::new();
     polynomial_committer.setup(3);
 
@@ -214,6 +220,77 @@ fn creates_witness_polynomial() {
     let (witness, evaluation) = polynomial_committer.create_witness(polynomial, point);
 
     let result = polynomial_committer.verify_evaluation(commitment.unwrap(), point, evaluation, witness);
-    println!("Verification Result: {}", result);
     assert!(result);
+}
+
+#[test]
+fn intuition_1() {
+    let a = G1Projective::generator() * Scalar::from(5);
+    let b = G2Projective::generator() * Scalar::from(6);
+    let c = G2Projective::generator() * Scalar::from(5 * 6);
+
+    let pairing_a = pairing(&a.into(), &b.into());
+    let pairing_b = pairing( &G1Affine::generator(), &c.into());
+
+    assert!(pairing_a == pairing_b);
+}
+
+#[test]
+fn intuition_3() {
+    let a = G1Projective::generator() * Scalar::from(5);
+    let b = G1Projective::generator() * Scalar::from(6);
+
+    // Some additive homomorphic property on the commitment
+    let pairing_a = pairing(&(a + G1Projective::generator()).to_affine(), &G2Projective::generator().to_affine());
+    let pairing_b = pairing(&b.to_affine(), &G2Projective::generator().to_affine());
+
+    assert!(pairing_a == pairing_b);
+}
+
+#[test]
+fn intuition_committed_polynomial_evaluation_basic() {
+    // 39 == x^3 -4x^2 +3x -1
+    // Only the point being evaluated raised to the degree of each coeefficient 
+    let x3 = G1Projective::generator() * Scalar::from(5_u64.pow(3));
+    let x2 = G1Projective::generator() * Scalar::from(5_u64.pow(2));
+    let x = G1Projective::generator() * Scalar::from(5);
+
+    // commitment to the evaluation of the above
+    let evaluation_commit = G1Projective::generator() * Scalar::from(39);
+
+    let lhs = evaluation_commit;
+    
+    let rhs = x3 * Scalar::from(1) +
+        x2 * -Scalar::from(4) +
+        x * Scalar::from(3) + 
+        G1Projective::generator() * -Scalar::from(1);
+
+    assert_eq!(lhs, rhs);
+}
+
+#[test]
+fn intuition_polynomial_commitment_full_evaluation() {
+    env_logger::init();
+    // x = 5
+    // 241 == x^3 +4x^2 +3x +1
+    let polynomial = Polynomial::new_from_bytes(&[1, 3, 4, 1]);
+
+    let gp_degree = polynomial.0.len();
+    let point = 5_u64;
+
+    // It's like global parameters without trusted tau
+    let mut gps = vec![];
+    for i in 1..gp_degree {
+        let g = G1Projective::generator() * Scalar::from(point.pow(i as u32));
+        gps.push(g);
+    }
+
+    // commitment to the evaluation of the above
+    let evaluation_commit = G1Projective::generator() * polynomial.evaluate(Scalar::from(point));
+
+    let rhs = gps.iter().rev().zip(polynomial.0.iter().rev()).fold(G1Projective::generator(), |acc, (gp, coefficient)| {
+        acc + gp * coefficient
+    });
+
+    assert_eq!(evaluation_commit, rhs);
 }

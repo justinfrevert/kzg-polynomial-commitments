@@ -2,7 +2,6 @@
 
 Learning through implementation! Inspired by use cases of committing to arbitrary data. This includes only parts of the DL construction, and not the construction making use of Pedersen commitments.
 
-
 References:
 https://cacr.uwaterloo.ca/techreports/2010/cacr2010-10.pdf
 https://youtu.be/A0oZVEXav24?t=110

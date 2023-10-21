@@ -19,8 +19,8 @@ _{j=0} \phi_j x^j$, it outputs $C =
 _{j=0} (g^{\alpha^j}
 )^\phi_j$ as the commitment to $\phi(x)$.
 
-CreateWitness($PK, \phi(x), i$) computes $\psi_i(x)$ = $\frac{\phi(x)−\phi(i)}
-{(x−i)}$ and outputs $\langle i, \phi(i), w_i \rangle$,
+CreateWitness($PK, \phi(x), i$) computes $\psi_i(x)$ = $\frac{\phi(x)-\phi(i)}
+{(x-i)}$ and outputs $\langle i, \phi(i), w_i \rangle$,
 where the witness $w_i = g^{\psi_i(\alpha)}$ is computed in a manner similar to $C$, above.
 
 VerifyEval($PK, C, i, \phi(i), w_i$) verifies that $\phi(i)$ is the evaluation at the index $i$ of the polynomial
@@ -28,9 +28,9 @@ committed to by $C$. If $e(C, g) \stackrel{?}{=}  e(w_i, g^\alpha/g^i)e(g, g)^{\
 0.
 VerifyEval is correct because
 
-$e(w_i, g^\alpha/g^i)e(g, g)\phi(i) = e(g^{\psi_i(\alpha)}, g^{(\alpha−i)})e(g, g)^{\phi(i)}$
-$= e(g, g)^{\psi_i(\alpha)(\alpha−i)+\phi(i)}$
-$= e(g, g)^{\phi(\alpha)} = e(C, g)$ as $\phi(x) = \psi_i(x)(x − i) + \phi(i)$
+$e(w_i, g^\alpha/g^i)e(g, g)\phi(i) = e(g^{\psi_i(\alpha)}, g^{(\alpha-i)})e(g, g)^{\phi(i)}$
+$= e(g, g)^{\psi_i(\alpha)(\alpha-i)+\phi(i)}$
+$= e(g, g)^{\phi(\alpha)} = e(C, g)$ as $\phi(x) = \psi_i(x)(x-i) + \phi(i)$
 
 Alternative verify eval definition:
 $e(\frac {C}{g^{\phi(i)}}, {g}) = e(w_i, \frac{g^\alpha}{g^i})$

@@ -14,3 +14,5 @@ blstrs = { version = "0.7.1", git = "https://github.com/justinFrevert/blstrs.git
 num-traits = "0.2.16"
 group = "0.13.0"
 bls12_381 = "0.8.0"
+regex = "1.10.1"
+blst = { version = "0.3.10", default-features = true }

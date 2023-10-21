@@ -3,6 +3,7 @@ use num_traits::pow;
 use rand::RngCore;
 
 use core::ops::Div;
+use std::ops::DivAssign;
 use group::ff::Field;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -66,15 +67,17 @@ impl Polynomial {
         self.0.last().copied()
     }
 
-    fn to_string(&self) -> String {
+    pub fn display(&self) -> String {
         let mut result = String::new();
         for (i, coeff) in self.0.iter().enumerate() {
             if i > 0 {
                 result.push_str(" + ");
+                result.push_str(&format!("{}x^{}", coeff, i));
+            } else {
+                result.push_str(&format!("{}", coeff));
             }
-            result.push_str(&format!("{}x^{}", coeff, i));
         }
-        result
+        result.replace("00", "")
     }
 }
 
@@ -129,6 +132,90 @@ fn evaluation_with_leading_coefficient() {
 }
 
 #[test]
+fn evaluation_scalars() {
+    let poly = Polynomial::new(&[
+        Scalar::from(2),
+        Scalar::from(4),
+        Scalar::from(3),
+    ]);
+    log::info!("poly {:?}", poly.display());
+
+    let point = Scalar::from(6_u64);
+    assert_eq!(poly.evaluate(point), Scalar::from(134_u64));
+}
+
+#[test]
+fn evaluation_negative_low_degree() {
+    let poly = Polynomial::new(&[
+        -Scalar::from(2),
+        Scalar::from(4),
+        Scalar::from(3),
+    ]);
+    log::info!("poly {:?}", poly.display());
+
+    let point = Scalar::from(6_u64);
+    assert_eq!(poly.evaluate(point), Scalar::from(130_u64));
+}
+
+#[test]
+fn evaluation_negative_high_degree() {
+    let poly = Polynomial::new(&[
+        Scalar::from(2),
+        Scalar::from(4),
+        -Scalar::from(3),
+    ]);
+    log::info!("poly {:?}", poly.display());
+
+    let point = Scalar::from(6_u64);
+    assert_eq!(poly.evaluate(point), -Scalar::from(82_u64));
+}
+
+#[test]
+fn evaluation_negative_majority_degree() {
+    let poly = Polynomial::new(&[
+        Scalar::from(2),
+        -Scalar::from(4),
+        -Scalar::from(3),
+    ]);
+    log::info!("poly {:?}", poly.display());
+
+    let point = Scalar::from(6_u64);
+    assert_eq!(poly.evaluate(point), -Scalar::from(130_u64));
+}
+
+#[test]
+fn evaluation_greater_degree() {
+    // x^3+4x^2 +3x+1
+    let poly = Polynomial::new(&[
+        Scalar::from(1),
+        Scalar::from(3),
+        Scalar::from(4),
+        Scalar::from(1),
+    ]);
+    log::info!("poly {:?}", poly.display());
+
+    let point = Scalar::from(5_u64);
+    assert_eq!(poly.evaluate(point), Scalar::from(241_u64));
+}
+
+#[test]
+fn evaluation_negative_greater_degree() {
+    let x = 5;
+    let y = 6;
+
+    // x^3 -4x^2 +3x -1
+    let poly = Polynomial::new(&[
+        -Scalar::from(1),
+        Scalar::from(3),
+        -Scalar::from(4),
+        Scalar::from(1),
+    ]);
+
+    let point = Scalar::from(5_u64);
+    assert_eq!(poly.evaluate(point), Scalar::from(39_u64));
+}
+
+#[test]
 fn divides_polynomials() {
     //  2x^2+5x+3
     let dividend = Polynomial::new(&vec![Scalar::from(2), Scalar::from(5), Scalar::from(3)]);
@@ -137,4 +224,19 @@ fn divides_polynomials() {
     // 2x+3
     let ans: Polynomial = Polynomial::new(&[Scalar::from(2), Scalar::from(3)]);
     assert_eq!(dividend / divisor, ans)
+}
+
+#[test]
+fn divides_polynomials_2() {
+    let point = Scalar::from(5);
+    let mut polynomial = Polynomial::new(&vec![Scalar::from(1), Scalar::from(2), Scalar::from(3)]);
+    let evaluation = polynomial.evaluate(point);
+    assert_eq!(evaluation, Scalar::from(86));
+
+    polynomial.0[0] -= &evaluation;
+
+    // let divisor = Polynomial::new(&[-point, Scalar::ONE]);
+    // let witness_polynomial = polynomial / divisor;
+
+    assert_eq!(polynomial.evaluate(point), Scalar::ZERO);
 }
