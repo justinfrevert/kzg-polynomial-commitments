@@ -3,7 +3,6 @@ use num_traits::pow;
 use rand::RngCore;
 
 use core::ops::Div;
-use std::ops::DivAssign;
 use group::ff::Field;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
@@ -133,11 +132,7 @@ fn evaluation_with_leading_coefficient() {
 
 #[test]
 fn evaluation_scalars() {
-    let poly = Polynomial::new(&[
-        Scalar::from(2),
-        Scalar::from(4),
-        Scalar::from(3),
-    ]);
+    let poly = Polynomial::new(&[Scalar::from(2), Scalar::from(4), Scalar::from(3)]);
     log::info!("poly {:?}", poly.display());
 
     let point = Scalar::from(6_u64);
@@ -146,11 +141,7 @@ fn evaluation_scalars() {
 
 #[test]
 fn evaluation_negative_low_degree() {
-    let poly = Polynomial::new(&[
-        -Scalar::from(2),
-        Scalar::from(4),
-        Scalar::from(3),
-    ]);
+    let poly = Polynomial::new(&[-Scalar::from(2), Scalar::from(4), Scalar::from(3)]);
     log::info!("poly {:?}", poly.display());
 
     let point = Scalar::from(6_u64);
@@ -159,11 +150,7 @@ fn evaluation_negative_low_degree() {
 
 #[test]
 fn evaluation_negative_high_degree() {
-    let poly = Polynomial::new(&[
-        Scalar::from(2),
-        Scalar::from(4),
-        -Scalar::from(3),
-    ]);
+    let poly = Polynomial::new(&[Scalar::from(2), Scalar::from(4), -Scalar::from(3)]);
     log::info!("poly {:?}", poly.display());
 
     let point = Scalar::from(6_u64);
@@ -172,11 +159,7 @@ fn evaluation_negative_high_degree() {
 
 #[test]
 fn evaluation_negative_majority_degree() {
-    let poly = Polynomial::new(&[
-        Scalar::from(2),
-        -Scalar::from(4),
-        -Scalar::from(3),
-    ]);
+    let poly = Polynomial::new(&[Scalar::from(2), -Scalar::from(4), -Scalar::from(3)]);
     log::info!("poly {:?}", poly.display());
 
     let point = Scalar::from(6_u64);
