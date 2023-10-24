@@ -1,7 +1,7 @@
 use crate::polynomials::Polynomial;
-use group::Curve;
 use blstrs::{pairing, G1Affine, G1Projective, G2Projective, Scalar};
 use group::prime::PrimeCurveAffine;
+use group::Curve;
 use group::{ff::Field as FieldT, Group};
 use rand::Rng;
 
